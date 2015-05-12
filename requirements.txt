@@ -1,0 +1,3 @@
+requests_mock
+requests>=2.4.3
+setuptools-git>=1.1
