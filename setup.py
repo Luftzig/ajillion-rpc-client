@@ -14,7 +14,7 @@ setup(
     author="AjillionMax.com",
     author_email="yoav.luft@ajillionmax.com",
     long_description=get_read_me(),
-    license='',  # TODO
+    license='Apache Software License',
     classifiers=[
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
@@ -23,7 +23,7 @@ setup(
         'Operating System :: OS Independent',
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
-        'License :: Other/Proprietary License',  # TODO : change!!!
+        'License :: OSI Approved :: Apache Software License'
     ],
     url='www.ajillionmax.com',
     test_suite='rpcclient.test',
