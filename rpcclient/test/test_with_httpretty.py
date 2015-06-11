@@ -143,6 +143,35 @@ class ClientTests(unittest.TestCase):
         self.client.configuration['sleep_interval'] = 2
         self.assertRaises(TimeoutError, self.client.test.task)
 
+    @requests_mock.mock()
+    def test_async_handler_ignores_single_failure_for_status(self, mock):
+        mock.register_uri('POST', "http://server/api/", [
+            {'status_code': 200, 'json': insert_id(
+                {"error": None, "jsonrpc": "2.0", "id": {},
+                 "result": {"report_token": "08d7d7bc608848668b3afa6b528a45d8"}})},
+
+            {'status_code': 200, 'json': insert_id(
+                {"error": None, "jsonrpc": "2.0", "id": {},
+                 "result": {"status": "processing"}})},
+            {'status_code': 200, 'json': insert_id(
+                {"error": None, "jsonrpc": "2.0", "id": {},
+                 "result": {}})},
+            {'status_code': 200, 'json': insert_id(
+                {"error": None, "jsonrpc": "2.0", "id": {},
+                 "result": {"status": "processing"}})},
+
+            {'status_code': 200, 'json': insert_id(
+                {"error": None, "jsonrpc": "2.0", "id": {},
+                 "result": {"status": "ready"}})},
+
+            {'status_code': 200, 'json': insert_id(
+                {"error": None, "jsonrpc": "2.0", "id": {},
+                 "result": {"report": "success"}})},
+        ])
+        interval_time = 1
+        response = self.client.test.task(_sleep_interval=interval_time)
+        self.assertEqual(response, {"report": "success"})
+
     def test_override_handlers(self):
         called_with_params = {}
 

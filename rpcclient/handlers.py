@@ -72,9 +72,11 @@ class AsyncRequestHandler(RequestHandler):
         Accepts the same arguments as :func:`RequestHandler.__init__`
         """
         super(AsyncRequestHandler, self).__init__(*args, **kwargs)
+        self._max_failures = self.configuration.get('max_failures') or 1
         self.delegate = RequestHandler(*args, **kwargs)
+        self._num_failures = 0
 
-    def handle(self, _timeout=None, _sleep_interval=None, _async=False, **kwargs):
+    def handle(self, _timeout=None, _sleep_interval=None, _async=False, _max_failures=None, **kwargs):
         """
         :param _timeout: Request timeout in seconds, default to the `timeout` value in the client's configuration or 300
          seconds
@@ -85,9 +87,12 @@ class AsyncRequestHandler(RequestHandler):
          :class:`concurrent.futures.Executor` this executor will be used for running the async, else, if the client
          configuration has `async_executor` it will be used, otherwise new
          :class:`concurrent.futures.thread.ThreadPoolExecutor` will be used.
+        :param _retries: The number of consecutive failures to retrieve the report status that should be ignored.
+         Defaults to the `max_failures` parameter in configuration or 1.
         :param kwargs: Keyword arguments will be passed to the remote as the `params` field in the request.
         :return: The raw response from the RPC target, or a future that will contain it.
         """
+        self._max_failures = _max_failures if _max_failures is not None else self._max_failures
         if _async or self.configuration.get('run_async'):
             if isinstance(_async, Executor):
                 executor = _async
@@ -115,6 +120,14 @@ class AsyncRequestHandler(RequestHandler):
     def _report_ready(self, token):
         try:
             response = self.delegate.handle(method='report.status.get', report_token=token)
-            return response['status'] == 'ready'
+            status = response['status'] == 'ready'
+            # Will not reach this if error!
+            self._num_failures = 0
+            return status
         except:
-            raise RemoteFailedError('No status in response')
+            if self._should_reraise_status_get_error():
+                raise RemoteFailedError('No status in response')
+
+    def _should_reraise_status_get_error(self):
+        self._num_failures += 1
+        return self._num_failures > self._max_failures
