@@ -53,7 +53,7 @@ class RequestHandler:
         }
         json_dumps = json.dumps(payload)
         response = requests.post(self.url, data=json_dumps, headers=self.headers)
-        if response.status_code != 200 or response.json().get("error"):
+        if response.status_code != 200 or response.json().get("error") or response.json().get('result').get('error'):
             raise RemoteFailedError(response=response)
         return response.json()["result"]
 

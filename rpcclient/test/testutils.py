@@ -9,12 +9,12 @@ MOCK_SERVER_URL = "http://server/api/"
 __author__ = 'yoav.luft@ajillionmax.com'
 
 
-def insert_id(response_dict):
+def insert_id(response_dict, status_code=200):
     def callback(request, context):
         body = request.body
         request_json = json.loads(body)
         response_dict['id'] = request_json['id']
-        context.status_code = 200
+        context.status_code = status_code
         return response_dict
 
     return callback

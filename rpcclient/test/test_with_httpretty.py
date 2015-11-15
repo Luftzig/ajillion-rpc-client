@@ -4,14 +4,12 @@ import json
 from threading import Barrier
 import time
 import unittest
-
 import requests_mock
-
 from rpcclient.client import RpcClient
 from rpcclient.deserialize import DictDeserializer
+from rpcclient.exceptions import RemoteFailedError
 from rpcclient.handlers import RequestHandler
 from rpcclient.test.testutils import insert_id, create_mock_rpc_client
-
 
 UNMAPPED_BEHAVIOUR = DictDeserializer.UnmappedBehaviour
 
@@ -31,7 +29,7 @@ class ClientTests(unittest.TestCase):
         mock.register_uri('POST', "http://server/api/", status_code=200, json=insert_id(
             {"error": None, "jsonrpc": "2.0", "id": {},
              "result": {"report": "success"}}),
-        )
+                          )
         self.client.test(arg1="arg")
         request = mock.request_history[-1].json()
         self.assertRegex(request['jsonrpc'], '2.0')
@@ -46,7 +44,7 @@ class ClientTests(unittest.TestCase):
         mock.register_uri('POST', "http://server/api/", status_code=200, json=insert_id(
             {"error": None, "jsonrpc": "2.0", "id": {},
              "result": {"report": "success"}}),
-        )
+                          )
         self.client.test.level2(arg1="arg")
         request = mock.request_history[-1].json()
         self.assertRegex(request['jsonrpc'], '2.0')
@@ -242,9 +240,37 @@ class ClientTests(unittest.TestCase):
                           [{'status_code': 200, 'json': insert_id(
                               {"error": None, "jsonrpc": "2.0", "id": {},
                                "result": {"report": "success"}})},
-                          ])
+                           ])
         response = self.client.test(arg1="arg")
         self.assertEqual(response, {"report": "success"})
+
+    @requests_mock.mock()
+    def test_raises_error_on_none_200(self, mock):
+        mock.register_uri('POST', "http://server/api/", json=insert_id({
+                                  "error": None, "jsonrpc": "2.0", "id": {},
+                                  "result": {"report": "success"}
+                              }, status_code=500))
+        self.assertRaises(RemoteFailedError, self.client.test, arg1="arg1")
+
+    @requests_mock.mock()
+    def test_raises_error_on_response_error(self, mock):
+        mock.register_uri('POST', "http://server/api/",
+                          [{'status_code': 200, 'json': insert_id({
+                              "error": 1, "jsonrpc": "2.0", "id": {},
+                              "result": {"report": "success"}
+                          })}
+                           ])
+        self.assertRaises(RemoteFailedError, self.client.test, arg1="arg1")
+
+    @requests_mock.mock()
+    def test_raises_error_on_result_error(self, mock):
+        mock.register_uri('POST', "http://server/api/",
+                          [{'status_code': 200, 'json': insert_id({
+                              "error": None, "jsonrpc": "2.0", "id": {},
+                              "result": {"error": "true"}
+                          })}
+                           ])
+        self.assertRaises(RemoteFailedError, self.client.test, arg1="arg1")
 
 
 class AutoDeserializationTests(unittest.TestCase):
@@ -261,7 +287,7 @@ class AutoDeserializationTests(unittest.TestCase):
                           [{'status_code': 200, 'json': insert_id(
                               {"error": None, "jsonrpc": "2.0", "id": {},
                                "result": {"report": "success"}})},
-                          ])
+                           ])
 
         result_deserializer = DictDeserializer(Result, unmapped_behaviour=UNMAPPED_BEHAVIOUR.TO_KWARGS)
         response = self.client.test(_deserializer=result_deserializer)
@@ -277,7 +303,7 @@ class AutoDeserializationTests(unittest.TestCase):
                           [{'status_code': 200, 'json': insert_id(
                               {"error": None, "jsonrpc": "2.0", "id": {},
                                "result": {"report": "success"}})},
-                          ])
+                           ])
 
         result_deserializer = DictDeserializer(Result, unmapped_behaviour=UNMAPPED_BEHAVIOUR.TO_KWARGS)
         client = RpcClient(configuration={
@@ -302,7 +328,7 @@ class AutoDeserializationTests(unittest.TestCase):
                           [{'status_code': 200, 'json': insert_id(
                               {"error": None, "jsonrpc": "2.0", "id": {},
                                "result": {"report": "success"}})},
-                          ])
+                           ])
 
         result_deserializer = DictDeserializer(Result, unmapped_behaviour=UNMAPPED_BEHAVIOUR.TO_KWARGS)
         client = RpcClient(configuration={
@@ -327,7 +353,7 @@ class AutoDeserializationTests(unittest.TestCase):
                           [{'status_code': 200, 'json': insert_id(
                               {"error": None, "jsonrpc": "2.0", "id": {},
                                "result": {"report": "success"}})},
-                          ])
+                           ])
 
         result_deserializer = DictDeserializer(Result, unmapped_behaviour=UNMAPPED_BEHAVIOUR.TO_KWARGS)
         client = RpcClient(configuration={
