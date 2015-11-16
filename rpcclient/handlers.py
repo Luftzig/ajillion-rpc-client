@@ -18,6 +18,16 @@ TIMEOUT_SECONDS = 60 * 5
 SLEEP_INTERVAL_SECONDS = 5
 
 
+# From funcy 1.6.0
+def get_in(coll, path, default=None):
+    for key in path:
+        if key in coll:
+            coll = coll[key]
+        else:
+            return default
+    return coll
+
+
 class RequestHandler:
     """
     This class defines how requests should be handled.
@@ -53,9 +63,17 @@ class RequestHandler:
         }
         json_dumps = json.dumps(payload)
         response = requests.post(self.url, data=json_dumps, headers=self.headers)
-        if response.status_code != 200 or response.json().get("error") or response.json().get('result').get('error'):
+        if self._has_error(response):
             raise RemoteFailedError(response=response)
         return response.json()["result"]
+
+    def _has_error(self, response):
+        checks = [
+            lambda r: r.status_code != 200,
+            lambda r: bool(get_in(r.json(), ('error',), False)),
+            lambda r: bool(get_in(r.json(), ('result', 'error'), False))
+        ]
+        return any(map(lambda check: check(response), checks))
 
 
 class AsyncRequestHandler(RequestHandler):

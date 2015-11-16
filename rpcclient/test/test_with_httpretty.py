@@ -245,6 +245,16 @@ class ClientTests(unittest.TestCase):
         self.assertEqual(response, {"report": "success"})
 
     @requests_mock.mock()
+    def test_return_list_result(self, mock):
+        mock.register_uri('POST', "http://server/api/",
+                          [{'status_code': 200, 'json': insert_id(
+                              {"error": None, "jsonrpc": "2.0", "id": {},
+                               "result": [1, 2, 3]})},
+                           ])
+        response = self.client.test(arg1="arg")
+        self.assertListEqual(response, [1, 2, 3])
+
+    @requests_mock.mock()
     def test_raises_error_on_none_200(self, mock):
         mock.register_uri('POST', "http://server/api/", json=insert_id({
                                   "error": None, "jsonrpc": "2.0", "id": {},
